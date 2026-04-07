@@ -11,7 +11,7 @@ detect_package_manager() {
     elif command -v pacman >/dev/null 2>&1; then
         PKG_MANAGER="pacman"
     else
-        echo "❌ ERROR: Unsupported package manager"
+        echo "ERROR: Unsupported package manager"
         exit 1
     fi
 

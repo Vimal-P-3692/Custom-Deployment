@@ -46,7 +46,7 @@ check_git() {
         echo "Git already installed"
         return 0
     else
-        echo "❌ Git not installed"
+        echo "Git not installed"
         return 1
     fi
 }

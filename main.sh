@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -e
-trap 'echo "❌ ERROR at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR
+trap 'echo "ERROR at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR
 
 source ./detect_pkg.sh
 source ./dotnet_utils.sh
