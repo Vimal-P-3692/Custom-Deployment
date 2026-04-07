@@ -46,7 +46,12 @@ dotnet_restore() {
 dotnet_build() {
     echo "Building project..."
 
-    dotnet build --no-restore || { echo "dotnet build failed"; return 1; }
+    PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+
+    [ -z "$PROJECT_FILE" ] && { echo "No .csproj file found"; return 1; }
+
+    dotnet build "$PROJECT_FILE" --no-restore \
+        || { echo "dotnet build failed"; return 1; }
 
     echo "Build completed"
     return 0
@@ -61,7 +66,11 @@ dotnet_publish() {
 
     echo "Publishing project..."
 
-    dotnet publish -c Release -o "$OUTPUT_DIR" --no-build \
+    PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+
+    [ -z "$PROJECT_FILE" ] && { echo "No .csproj file found"; return 1; }
+
+    dotnet publish "$PROJECT_FILE" -c Release -o "$OUTPUT_DIR" \
         || { echo "dotnet publish failed"; return 1; }
 
     echo "Publish completed → $OUTPUT_DIR"
