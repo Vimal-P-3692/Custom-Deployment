@@ -20,24 +20,23 @@ create_service_file() {
 
     echo "Using DLL: $DLL_FILE"
 
-    sudo bash -c "cat > $SERVICE_FILE" <<EOF
-        [Unit]
-        Description=$SERVICE_NAME service
-        After=network.target
+    sudo tee "$SERVICE_FILE" > /dev/null <<EOF
+[Unit]
+Description=$SERVICE_NAME service
+After=network.target
 
-        [Service]
-        WorkingDirectory=$PROJECT_PATH
-        ExecStart=$HOME/.dotnet/dotnet $DLL_FILE --urls "http://0.0.0.0:$PORT"
-        Restart=always
-        RestartSec=10
-        SyslogIdentifier=$SERVICE_NAME
-        User=$(whoami)
-        Environment=ASPNETCORE_ENVIRONMENT=Production
+[Service]
+WorkingDirectory=$PROJECT_PATH
+ExecStart=$HOME/.dotnet/dotnet $DLL_FILE --urls "http://0.0.0.0:$PORT"
+Restart=always
+RestartSec=10
+SyslogIdentifier=$SERVICE_NAME
+User=$(whoami)
+Environment=ASPNETCORE_ENVIRONMENT=Production
 
-        [Install]
-        WantedBy=multi-user.target
-        EOF
-
+[Install]
+WantedBy=multi-user.target
+EOF
     [ $? -ne 0 ] && { echo "Failed to create service file"; return 1; }
 
     echo "Service file created: $SERVICE_FILE"
