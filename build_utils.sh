@@ -1,48 +1,48 @@
 #!/bin/bash
 
-# -------------------------------
-# CLONE REPOSITORY
-# -------------------------------
-
+# Function: Clone repo
 clone_repo() {
     REPO_URL=$1
-    TARGET_PATH=${2:-$HOME}
+    TARGET_DIR=$2
 
-    [ -z "$REPO_URL" ] && { echo "Repo URL not provided"; return 1; }
+    echo "Cloning repository..."
 
-    cd "$TARGET_PATH" || { echo "Cannot access path: $TARGET_PATH"; return 1; }
+    git clone "$REPO_URL" "$TARGET_DIR" \
+        || { echo "Failed to clone repository"; return 1; }
 
-    REPO_NAME=$(basename "$REPO_URL" .git)
-
-    if [ -d "$REPO_NAME" ]; then
-        echo "Repo already exists. Skipping clone..."
-    else
-        echo "Cloning repository..."
-        git clone "$REPO_URL" || { echo "Git clone failed"; return 1; }
-    fi
-
-    cd "$REPO_NAME" || { echo "Failed to enter repo directory"; return 1; }
-
+    echo "Repository cloned into $TARGET_DIR"
     return 0
 }
 
-# -------------------------------
-# RESTORE DEPENDENCIES
-# -------------------------------
+# Function: Enter project path inside repo
+enter_project_path() {
+    BASE_DIR=$1
+    PROJECT_PATH=$2
 
+    FULL_PATH="$BASE_DIR/$PROJECT_PATH"
+
+    echo "Navigating to project path: $FULL_PATH"
+
+    [ ! -d "$FULL_PATH" ] && { echo "Path does not exist: $FULL_PATH"; return 1; }
+
+    cd "$FULL_PATH" || { echo "Failed to enter directory"; return 1; }
+
+    echo "Now inside $(pwd)"
+    return 0
+}
+
+# Function: Restore
 dotnet_restore() {
-    echo "Restoring dependencies..."
+    echo "Restoring project..."
 
-    dotnet restore || { echo "dotnet restore failed"; return 1; }
+    dotnet restore \
+        || { echo "dotnet restore failed"; return 1; }
 
     echo "Restore completed"
     return 0
 }
 
-# -------------------------------
-# BUILD PROJECT
-# -------------------------------
-
+# Function: Build
 dotnet_build() {
     echo "Building project..."
 
@@ -57,10 +57,7 @@ dotnet_build() {
     return 0
 }
 
-# -------------------------------
-# PUBLISH PROJECT
-# -------------------------------
-
+# Function: Publish
 dotnet_publish() {
     OUTPUT_DIR=${1:-publish}
 

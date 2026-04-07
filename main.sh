@@ -1,80 +1,43 @@
 #!/bin/bash
 
 set -e
-trap 'echo "ERROR at line $LINENO"; exit 1' ERR
+trap 'echo "ERROR at line $LINENO. Command: $BASH_COMMAND"; exit 1' ERR
 
-# -------------------------------
-# LOAD MODULES
-# -------------------------------
-
-source ./detect_pkg.sh || { echo "Failed to load detect_pkg.sh"; exit 1; }
-source ./dotnet_utils.sh || { echo "Failed to load dotnet_utils.sh"; exit 1; }
-source ./system_utils.sh || { echo "Failed to load system_utils.sh"; exit 1; }
-source ./build_utils.sh || { echo "Failed to load build_utils.sh"; exit 1; }
-
-# -------------------------------
-# INPUTS
-# -------------------------------
+source ./detect_pkg.sh
+source ./dotnet_utils.sh
+source ./system_utils.sh
+source ./build_utils.sh  
 
 REPO_URL=$1
 DOTNET_VERSION=$2
-PROJECT_PATH=${3:-$HOME}
+PROJECT_SUB_PATH=$3  
 
-[ -z "$REPO_URL" ] && { echo "Repo URL required"; exit 1; }
-[ -z "$DOTNET_VERSION" ] && { echo "Dotnet version required"; exit 1; }
+BASE_DIR="$HOME/project_repo"
 
-# -------------------------------
-# STEP 1: DETECT PACKAGE MANAGER
-# -------------------------------
-
+# Step 1: Detect package manager
 detect_package_manager
 
-# -------------------------------
-# STEP 2: CHECK / INSTALL GIT
-# -------------------------------
+# Step 2: Install dependencies
+install_icu
 
 if ! check_git; then
-    install_git || { echo "Git installation failed"; exit 1; }
+    install_git
 fi
 
-# -------------------------------
-# STEP 3: CHECK / INSTALL DOTNET
-# -------------------------------
-
+# Step 3: .NET
 if ! check_dotnet_version "$DOTNET_VERSION"; then
-    install_dotnet_version "$DOTNET_VERSION" || {
-        echo "Dotnet installation failed"
-        exit 1
-    }
+    install_dotnet_version "$DOTNET_VERSION"
 fi
 
-# -------------------------------
-# STEP 4: INSTALL ICU
-# -------------------------------
+# Step 4: Clone repo
+clone_repo "$REPO_URL" "$BASE_DIR"
 
-install_icu || { echo "ICU installation failed"; exit 1; }
+# Step 5: Move into required sub-folder
+enter_project_path "$BASE_DIR" "$PROJECT_SUB_PATH"
 
-# -------------------------------
-# STEP 5: CLONE REPO
-# -------------------------------
+# Step 6: Build steps
+dotnet_restore
+dotnet_build
+dotnet_publish
 
-clone_repo "$REPO_URL" "$PROJECT_PATH" || {
-    echo "Repo clone failed"
-    exit 1
-}
-
-# -------------------------------
-# STEP 6: BUILD PROCESS
-# -------------------------------
-
-dotnet_restore || exit 1
-dotnet_build || exit 1
-dotnet_publish || exit 1
-
-# -------------------------------
-# DONE
-# -------------------------------
-
-echo "--------------------------------------"
 echo "Deployment completed successfully!"
-echo "--------------------------------------"
