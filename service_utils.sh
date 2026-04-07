@@ -52,3 +52,29 @@ EOF
     echo "Service file created: $SERVICE_FILE"
     return 0
 }
+
+# Function: Reload systemd 
+reload_systemd() 
+{ 
+    echo "Reloading systemd daemon..." 
+    sudo systemctl daemon-reexec || { echo "daemon-reexec failed";  return 1; } 
+    sudo systemctl daemon-reload || { echo "daemon-reload failed"; return 1; } 
+    echo "systemd reloaded" 
+}
+
+# Function: Enable and start service 
+start_service() 
+{ 
+    SERVICE_NAME=$1 
+    echo "Starting service: $SERVICE_NAME" 
+    sudo systemctl enable "$SERVICE_NAME" \ || { echo "Failed to enable service"; return 1; } 
+    sudo systemctl restart "$SERVICE_NAME" \ || { echo "Failed to start service"; return 1; } 
+    echo "Service started successfully" 
+}
+
+# Function: Check status 
+check_service_status() 
+{ 
+    SERVICE_NAME=$1 echo "Checking service status..." 
+    sudo systemctl status "$SERVICE_NAME" --no-pager \ || { echo "Failed to get service status"; return 1; } 
+}
