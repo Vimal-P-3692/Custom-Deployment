@@ -12,7 +12,7 @@ REPO_URL=$1
 DOTNET_VERSION=$2
 PROJECT_SUB_PATH=$3  
 
-BASE_DIR="$HOME/project_repo"
+BASE_DIR="$HOME"
 
 # Step 1: Detect package manager
 detect_package_manager

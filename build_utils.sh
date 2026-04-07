@@ -5,13 +5,20 @@ clone_repo() {
     REPO_URL=$1
     TARGET_DIR=$2
 
-    echo "Cloning repository..."
+    echo "Cloning repository into $TARGET_DIR..."
 
-    git clone "$REPO_URL" "$TARGET_DIR" \
+    cd "$TARGET_DIR" || { echo "Failed to access $TARGET_DIR"; return 1; }
+
+    git clone "$REPO_URL" \
         || { echo "Failed to clone repository"; return 1; }
 
-    echo "Repository cloned into $TARGET_DIR"
-    return 0
+    # Extract repo name
+    REPO_NAME=$(basename "$REPO_URL" .git)
+
+    echo "Repository cloned: $REPO_NAME"
+
+    # Return repo path
+    CLONED_PATH="$TARGET_DIR/$REPO_NAME"
 }
 
 # Function: Enter project path inside repo
