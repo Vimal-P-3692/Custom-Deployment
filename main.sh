@@ -8,6 +8,7 @@ source ./dotnet_utils.sh
 source ./system_utils.sh
 source ./build_utils.sh
 source ./service_utils.sh 
+source ./web_utils.sh
 
 REPO_URL=$1
 DOTNET_VERSION=$2
