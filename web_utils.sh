@@ -118,24 +118,15 @@ EOF
 
 enable_https() {
     DOMAIN=$1
+    EMAIL=$2
 
-    if [ -z "$DOMAIN" ]; then
-        warn "No domain provided. Skipping HTTPS..."
-        return
-    fi
+    [ -z "$DOMAIN" ] && error_exit "Domain required"
+    [ -z "$EMAIL" ] && error_exit "Email required"
 
-    if ! is_installed certbot; then
-        warn "Certbot not installed. Installing..."
-        install_certbot
-    fi
-
-    log "Enabling HTTPS for $DOMAIN..."
-
-    sudo certbot --nginx -d "$DOMAIN" \
+    sudo certbot --nginx \
+        -d "$DOMAIN" \
         --non-interactive \
         --agree-tos \
-        -m admin@"$DOMAIN" \
-        --redirect || error_exit "HTTPS setup failed"
-
-    log "HTTPS enabled for $DOMAIN"
+        -m "$EMAIL" \
+        || error_exit "HTTPS setup failed"
 }

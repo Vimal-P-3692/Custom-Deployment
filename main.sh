@@ -17,6 +17,7 @@ SERVICE_NAME=$(echo "$4" | xargs)
 PORT=$(echo "$5" | xargs)
 PROJECT_NAME=$(echo "$6" | xargs)
 DOMAIN=$7
+EMAIL=$8
 
 echo "SERVICE_NAME: '$SERVICE_NAME'"
 echo "PORT: '$PORT'"
@@ -69,7 +70,6 @@ install_nginx
 setup_nginx_reverse_proxy "$SERVICE_NAME" "$PORT"
 
 install_certbot
-DOMAIN=$6
-enable_https "$DOMAIN"
+enable_https "$DOMAIN" "$EMAIL"
 
 echo "Deployment + Service setup completed successfully!"
