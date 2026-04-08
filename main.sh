@@ -14,9 +14,12 @@ DOTNET_VERSION=$2
 PROJECT_SUB_PATH=$3
 SERVICE_NAME=$(echo "$4" | xargs)     
 PORT=$(echo "$5" | xargs)
+PROJECT_NAME=$(echo "$6" | xargs)
+DOMAIN=$7
 
 echo "SERVICE_NAME: '$SERVICE_NAME'"
 echo "PORT: '$PORT'"
+echo "PROJECT_NAME: '$PROJECT_NAME'"
 
 BASE_DIR="$HOME"
 
@@ -55,7 +58,7 @@ PUBLISH_PATH="$(pwd)/publish"
 
 echo "Using publish path: $PUBLISH_PATH"
 
-create_service_file "$SERVICE_NAME" "$PORT" "$PUBLISH_PATH"
+create_service_file "$SERVICE_NAME" "$PORT" "$PUBLISH_PATH" "$PROJECT_NAME"
 reload_systemd
 start_service "$SERVICE_NAME"
 check_service_status "$SERVICE_NAME"

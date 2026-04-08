@@ -14,32 +14,21 @@ error_exit() {
 # 🔹 Get correct DLL
 get_main_dll() {
     PUBLISH_PATH=$1
-
-    # Get project folder name (parent of publish)
-    PROJECT_NAME=$(basename "$PUBLISH_PATH")
+    PROJECT_NAME=$2
 
     DLL_FILE="$PUBLISH_PATH/$PROJECT_NAME.dll"
 
-    # ✅ If exact match exists → use it
-    if [ -f "$DLL_FILE" ]; then
-        echo "$DLL_FILE"
-        return 0
-    fi
-
-    # ✅ Fallback: ignore Microsoft/System DLLs
-    DLL_FILE=$(find "$PUBLISH_PATH" -maxdepth 1 -name "*.dll" \
-        ! -name "Microsoft.*" ! -name "System.*" | head -n 1)
-
-    [ -z "$DLL_FILE" ] && error_exit "No valid application DLL found"
+    [ ! -f "$DLL_FILE" ] && error_exit "Main DLL not found: $DLL_FILE"
 
     echo "$DLL_FILE"
 }
 
 # 🔹 Create systemd service
 create_service_file() {
-    SSERVICE_NAME=$(echo "$1" | xargs)
+    SERVICE_NAME=$(echo "$1" | xargs)
     PORT=$2
     PROJECT_PATH=$3
+    PROJECT_NAME=$4
 
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
@@ -52,7 +41,7 @@ create_service_file() {
 
     log "Creating systemd service: $SERVICE_NAME"
 
-    DLL_FILE=$(get_main_dll "$PROJECT_PATH")
+    DLL_FILE=$(get_main_dll "$PROJECT_PATH" "$PROJECT_NAME")
 
     log "Using DLL: $DLL_FILE"
 
