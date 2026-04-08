@@ -1,6 +1,41 @@
 #!/bin/bash
 
-# Function: Create systemd service file
+set -e
+
+log() {
+    echo "[INFO] $1"
+}
+
+error_exit() {
+    echo "[ERROR] $1"
+    exit 1
+}
+
+# 🔹 Get correct DLL
+get_main_dll() {
+    PUBLISH_PATH=$1
+
+    # Get project folder name (parent of publish)
+    PROJECT_NAME=$(basename "$(dirname "$PUBLISH_PATH")")
+
+    DLL_FILE="$PUBLISH_PATH/$PROJECT_NAME.dll"
+
+    # ✅ If exact match exists → use it
+    if [ -f "$DLL_FILE" ]; then
+        echo "$DLL_FILE"
+        return 0
+    fi
+
+    # ✅ Fallback: ignore Microsoft/System DLLs
+    DLL_FILE=$(find "$PUBLISH_PATH" -maxdepth 1 -name "*.dll" \
+        ! -name "Microsoft.*" ! -name "System.*" | head -n 1)
+
+    [ -z "$DLL_FILE" ] && error_exit "No valid application DLL found"
+
+    echo "$DLL_FILE"
+}
+
+# 🔹 Create systemd service
 create_service_file() {
     SERVICE_NAME=$1
     PORT=$2
@@ -8,27 +43,20 @@ create_service_file() {
 
     SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 
-    echo "Creating systemd service: $SERVICE_NAME"
+    # ✅ Validations
+    [ -z "$SERVICE_NAME" ] && error_exit "Service name is required"
+    [[ "$SERVICE_NAME" =~ \  ]] && error_exit "Service name should not contain spaces"
 
-    [ -z "$SERVICE_NAME" ] && { echo "Service name is required"; return 1; }
-    [ -z "$PORT" ] && { echo "Port is required"; return 1; }
-    [ -z "$PROJECT_PATH" ] && { echo "Project path is required"; return 1; }
+    [ -z "$PORT" ] && error_exit "Port is required"
+    [ -z "$PROJECT_PATH" ] && error_exit "Project path is required"
 
-    # Determine main project DLL
-    PROJECT_NAME=$(basename "$PROJECT_PATH")
-    DLL_FILE=$(find "$PROJECT_PATH" -maxdepth 1 -name "$PROJECT_NAME.dll" | head -n 1)
+    log "Creating systemd service: $SERVICE_NAME"
 
-    # Fallback: pick first DLL in publish folder
-    if [ -z "$DLL_FILE" ]; then
-        DLL_FILE=$(find "$PROJECT_PATH" -maxdepth 1 -name "*.dll" | head -n 1)
-    fi
+    DLL_FILE=$(get_main_dll "$PROJECT_PATH")
 
-    [ -z "$DLL_FILE" ] && { echo "No DLL file found in $PROJECT_PATH"; return 1; }
+    log "Using DLL: $DLL_FILE"
 
-    echo "Project name: $PROJECT_NAME"
-    echo "Using DLL: $DLL_FILE"
-
-    # Create systemd service
+    # ✅ Create service file
     sudo tee "$SERVICE_FILE" > /dev/null <<EOF
 [Unit]
 Description=$SERVICE_NAME service
@@ -36,7 +64,7 @@ After=network.target
 
 [Service]
 WorkingDirectory=$PROJECT_PATH
-ExecStart=$HOME/.dotnet/dotnet $DLL_FILE --urls "http://0.0.0.0:$PORT"
+ExecStart=$HOME/.dotnet/dotnet $DLL_FILE --urls=http://0.0.0.0:$PORT
 Restart=always
 RestartSec=10
 SyslogIdentifier=$SERVICE_NAME
@@ -47,34 +75,39 @@ Environment=ASPNETCORE_ENVIRONMENT=Production
 WantedBy=multi-user.target
 EOF
 
-    [ $? -ne 0 ] && { echo "Failed to create service file"; return 1; }
-
-    echo "Service file created: $SERVICE_FILE"
-    return 0
+    log "Service file created: $SERVICE_FILE"
 }
 
-# Function: Reload systemd 
-reload_systemd() 
-{ 
-    echo "Reloading systemd daemon..." 
-    sudo systemctl daemon-reexec || { echo "daemon-reexec failed";  return 1; } 
-    sudo systemctl daemon-reload || { echo "daemon-reload failed"; return 1; } 
-    echo "systemd reloaded" 
+# 🔹 Reload systemd
+reload_systemd() {
+    log "Reloading systemd daemon..."
+
+    sudo systemctl daemon-reexec || error_exit "daemon-reexec failed"
+    sudo systemctl daemon-reload || error_exit "daemon-reload failed"
+
+    log "systemd reloaded"
 }
 
-# Function: Enable and start service 
-start_service() 
-{ 
-    SERVICE_NAME=$1 
-    echo "Starting service: $SERVICE_NAME" 
-    sudo systemctl enable "$SERVICE_NAME" \ || { echo "Failed to enable service"; return 1; } 
-    sudo systemctl restart "$SERVICE_NAME" \ || { echo "Failed to start service"; return 1; } 
-    echo "Service started successfully" 
+# 🔹 Enable & start service
+start_service() {
+    SERVICE_NAME=$1
+
+    [ -z "$SERVICE_NAME" ] && error_exit "Service name required"
+
+    log "Starting service: $SERVICE_NAME"
+
+    sudo systemctl enable "$SERVICE_NAME" || error_exit "Failed to enable service"
+    sudo systemctl restart "$SERVICE_NAME" || error_exit "Failed to start service"
+
+    log "Service started successfully"
 }
 
-# Function: Check status 
-check_service_status() 
-{ 
-    SERVICE_NAME=$1 echo "Checking service status..." 
-    sudo systemctl status "$SERVICE_NAME" --no-pager \ || { echo "Failed to get service status"; return 1; } 
+# 🔹 Check status
+check_service_status() {
+    SERVICE_NAME=$1
+
+    log "Checking service status..."
+
+    sudo systemctl status "$SERVICE_NAME" --no-pager \
+        || error_exit "Failed to get service status"
 }
