@@ -1,24 +1,43 @@
 #!/bin/bash
 
-# Function: Clone repo
+set -e
+
+log() {
+    echo "[INFO] $1"
+}
+
+error_exit() {
+    echo "[ERROR] $1"
+    exit 1
+}
+
+# Function: Clone repo (idempotent)
 clone_repo() {
     REPO_URL=$1
     TARGET_DIR=$2
 
-    echo "Cloning repository into $TARGET_DIR..."
+    command -v git >/dev/null 2>&1 || error_exit "Git not installed"
 
-    cd "$TARGET_DIR" || { echo "Failed to access $TARGET_DIR"; return 1; }
-
-    git clone "$REPO_URL" \
-        || { echo "Failed to clone repository"; return 1; }
-
-    # Extract repo name
     REPO_NAME=$(basename "$REPO_URL" .git)
+    TARGET_PATH="$TARGET_DIR/$REPO_NAME"
 
-    echo "Repository cloned: $REPO_NAME"
+    log "Preparing repository at $TARGET_PATH..."
 
-    # Return repo path
-    CLONED_PATH="$TARGET_DIR/$REPO_NAME"
+    mkdir -p "$TARGET_DIR" || error_exit "Failed to create/access $TARGET_DIR"
+    cd "$TARGET_DIR" || error_exit "Failed to access $TARGET_DIR"
+
+    if [ -d "$TARGET_PATH/.git" ]; then
+        log "Repository exists. Pulling latest changes..."
+        cd "$TARGET_PATH" || error_exit "Failed to enter repo"
+        git pull || error_exit "Git pull failed"
+    else
+        log "Cloning repository..."
+        git clone "$REPO_URL" "$TARGET_PATH" \
+            || error_exit "Failed to clone repository"
+    fi
+
+    export CLONED_PATH="$TARGET_PATH"
+    log "Repository ready: $CLONED_PATH"
 }
 
 # Function: Enter project path inside repo
@@ -28,55 +47,60 @@ enter_project_path() {
 
     FULL_PATH="$BASE_DIR/$PROJECT_PATH"
 
-    echo "Navigating to project path: $FULL_PATH"
+    log "Navigating to project path: $FULL_PATH"
 
-    [ ! -d "$FULL_PATH" ] && { echo "Path does not exist: $FULL_PATH"; return 1; }
+    [ ! -d "$FULL_PATH" ] && error_exit "Path does not exist: $FULL_PATH"
 
-    cd "$FULL_PATH" || { echo "Failed to enter directory"; return 1; }
+    cd "$FULL_PATH" || error_exit "Failed to enter directory"
 
-    echo "Now inside $(pwd)"
-    return 0
+    log "Now inside $(pwd)"
+}
+
+# Function: Find correct .csproj
+find_project_file() {
+    PROJECT_FILE=$(find . -maxdepth 2 -name "*.csproj" ! -name "*Test*" | head -n 1)
+
+    [ -z "$PROJECT_FILE" ] && error_exit "No valid .csproj file found"
+
+    echo "$PROJECT_FILE"
 }
 
 # Function: Restore
 dotnet_restore() {
-    echo "Restoring project..."
+    log "Restoring project..."
 
     dotnet restore \
-        || { echo "dotnet restore failed"; return 1; }
+        || error_exit "dotnet restore failed"
 
-    echo "Restore completed"
-    return 0
+    log "Restore completed"
 }
 
 # Function: Build
 dotnet_build() {
-    echo "Building project..."
+    log "Building project..."
 
-    PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+    PROJECT_FILE=$(find_project_file)
 
-    [ -z "$PROJECT_FILE" ] && { echo "No .csproj file found"; return 1; }
+    log "Using project file: $PROJECT_FILE"
 
     dotnet build "$PROJECT_FILE" --no-restore \
-        || { echo "dotnet build failed"; return 1; }
+        || error_exit "dotnet build failed"
 
-    echo "Build completed"
-    return 0
+    log "Build completed"
 }
 
 # Function: Publish
 dotnet_publish() {
     OUTPUT_DIR=${1:-publish}
 
-    echo "Publishing project..."
+    log "Publishing project..."
 
-    PROJECT_FILE=$(find . -name "*.csproj" | head -n 1)
+    PROJECT_FILE=$(find_project_file)
 
-    [ -z "$PROJECT_FILE" ] && { echo "No .csproj file found"; return 1; }
+    log "Using project file: $PROJECT_FILE"
 
     dotnet publish "$PROJECT_FILE" -c Release -o "$OUTPUT_DIR" \
-        || { echo "dotnet publish failed"; return 1; }
+        || error_exit "dotnet publish failed"
 
-    echo "Publish completed → $OUTPUT_DIR"
-    return 0
+    log "Publish completed → $OUTPUT_DIR"
 }
