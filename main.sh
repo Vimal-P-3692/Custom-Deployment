@@ -12,8 +12,11 @@ source ./service_utils.sh
 REPO_URL=$1
 DOTNET_VERSION=$2
 PROJECT_SUB_PATH=$3
-SERVICE_NAME=$4      
-PORT=$5          
+SERVICE_NAME=$(echo "$4" | xargs)     
+PORT=$(echo "$5" | xargs)
+
+echo "SERVICE_NAME: '$SERVICE_NAME'"
+echo "PORT: '$PORT'"
 
 BASE_DIR="$HOME"
 

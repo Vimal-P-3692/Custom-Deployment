@@ -16,7 +16,7 @@ get_main_dll() {
     PUBLISH_PATH=$1
 
     # Get project folder name (parent of publish)
-    PROJECT_NAME=$(basename "$(dirname "$PUBLISH_PATH")")
+    PROJECT_NAME=$(basename "$PUBLISH_PATH")
 
     DLL_FILE="$PUBLISH_PATH/$PROJECT_NAME.dll"
 
@@ -37,7 +37,7 @@ get_main_dll() {
 
 # 🔹 Create systemd service
 create_service_file() {
-    SERVICE_NAME=$1
+    SSERVICE_NAME=$(echo "$1" | xargs)
     PORT=$2
     PROJECT_PATH=$3
 
@@ -90,14 +90,15 @@ reload_systemd() {
 
 # 🔹 Enable & start service
 start_service() {
-    SERVICE_NAME=$1
+    SERVICE_NAME=$(echo "$1" | xargs)
+    log "Service name after trim: '$SERVICE_NAME'"
 
     [ -z "$SERVICE_NAME" ] && error_exit "Service name required"
 
     log "Starting service: $SERVICE_NAME"
 
-    sudo systemctl enable "$SERVICE_NAME" || error_exit "Failed to enable service"
-    sudo systemctl restart "$SERVICE_NAME" || error_exit "Failed to start service"
+    sudo systemctl enable "${SERVICE_NAME}.service" || error_exit "Failed to enable service"
+    sudo systemctl restart "${SERVICE_NAME}.service" || error_exit "Failed to start service"
 
     log "Service started successfully"
 }
