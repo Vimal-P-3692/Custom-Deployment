@@ -57,4 +57,12 @@ reload_systemd
 start_service "$SERVICE_NAME"
 check_service_status "$SERVICE_NAME"
 
+# Step 8: Web server + HTTPS
+install_nginx
+setup_nginx_reverse_proxy "$SERVICE_NAME" "$PORT"
+
+install_certbot
+DOMAIN=$6
+enable_https "$DOMAIN"
+
 echo "Deployment + Service setup completed successfully!"

@@ -1,44 +1,82 @@
 #!/bin/bash
 
+set -e
+
+log() {
+    echo "[INFO] $1"
+}
+
+warn() {
+    echo "[WARN] $1"
+}
+
+error_exit() {
+    echo "[ERROR] $1"
+    exit 1
+}
+
 # Function: Check if required .NET version is installed
 check_dotnet_version() {
     REQUIRED_VERSION=$1
 
-    if command -v dotnet >/dev/null 2>&1; then
-        INSTALLED_VERSION=$(dotnet --version)
-
-        echo "Installed .NET version: $INSTALLED_VERSION"
-        echo "Required .NET version: $REQUIRED_VERSION"
-
-        if [[ "$INSTALLED_VERSION" == "$REQUIRED_VERSION"* ]]; then
-            echo "Required .NET version is already installed"
-            return 0
-        else
-            echo "Different .NET version found"
-            return 1
-        fi
-    else
-        echo ".NET is not installed"
+    if ! command -v dotnet >/dev/null 2>&1; then
+        warn ".NET is not installed"
         return 1
     fi
+
+    log "Checking installed .NET SDKs..."
+
+    # Get all installed SDK versions
+    INSTALLED_VERSIONS=$(dotnet --list-sdks | awk '{print $1}')
+
+    echo "Installed SDKs:"
+    echo "$INSTALLED_VERSIONS"
+
+    for version in $INSTALLED_VERSIONS; do
+        if [[ "$version" == "$REQUIRED_VERSION"* ]]; then
+            log "Required .NET version $REQUIRED_VERSION is already installed"
+            return 0
+        fi
+    done
+
+    warn "Required .NET version not found"
+    return 1
 }
 
 # Function: Install required .NET version
 install_dotnet_version() {
     REQUIRED_VERSION=$1
 
-    echo "Installing .NET SDK version $REQUIRED_VERSION..."
+    # 🔹 Skip if already installed
+    if check_dotnet_version "$REQUIRED_VERSION"; then
+        log "Skipping installation (already installed)"
+        return 0
+    fi
 
-    wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh \
-        || { echo "Failed to download installer"; return 1; }
+    log "Installing .NET SDK version $REQUIRED_VERSION..."
 
-    chmod +x dotnet-install.sh || return 1
+    INSTALL_SCRIPT="dotnet-install.sh"
 
-    ./dotnet-install.sh --version "$REQUIRED_VERSION" \
-        || { echo ".NET installation failed"; return 1; }
+    # Download only if not already present
+    if [ ! -f "$INSTALL_SCRIPT" ]; then
+        log "Downloading dotnet-install.sh..."
+        wget https://dot.net/v1/dotnet-install.sh -O "$INSTALL_SCRIPT" \
+            || error_exit "Failed to download installer"
+        chmod +x "$INSTALL_SCRIPT"
+    else
+        log "Installer already exists. Skipping download..."
+    fi
+
+    # Run installer
+    ./"$INSTALL_SCRIPT" --version "$REQUIRED_VERSION" \
+        || error_exit ".NET installation failed"
 
     export PATH="$HOME/.dotnet:$PATH"
 
-    echo ".NET SDK $REQUIRED_VERSION installed successfully"
-    return 0
+    # Verify installation
+    if check_dotnet_version "$REQUIRED_VERSION"; then
+        log ".NET SDK $REQUIRED_VERSION installed successfully"
+    else
+        error_exit "Installation completed but version not found"
+    fi
 }
