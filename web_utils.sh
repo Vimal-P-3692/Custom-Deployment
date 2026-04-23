@@ -130,9 +130,11 @@ enable_https() {
     log "Waiting for nginx to stabilize..."
     sleep 10
 
-    log "Checking domain reachability..."
-    if ! curl -s --head --fail http://$DOMAIN > /dev/null; then
-        error_exit "Domain not reachable (check DNS / firewall / nginx)"
+   log "Checking domain reachability (soft check)..."
+    if curl -Is --max-time 5 http://$DOMAIN | head -n 1 | grep -q "HTTP"; then
+        log "Domain reachable"
+    else
+        warn "Domain not reachable yet (continuing anyway)"
     fi
 
     log "Starting Certbot HTTPS setup..."
