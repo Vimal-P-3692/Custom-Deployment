@@ -67,7 +67,7 @@ check_service_status "$SERVICE_NAME"
 
 # Step 8: Web server + HTTPS
 install_nginx
-setup_nginx_reverse_proxy "$SERVICE_NAME" "$PORT"
+setup_nginx_reverse_proxy "$SERVICE_NAME" "$PORT" "$DOMAIN"
 
 install_certbot
 enable_https "$DOMAIN" "$EMAIL"
