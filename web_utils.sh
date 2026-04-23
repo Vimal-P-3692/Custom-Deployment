@@ -131,11 +131,19 @@ enable_https() {
     sleep 10
 
     log "Checking domain reachability..."
-    curl -I http://$DOMAIN || error_exit "Domain not reachable"
+    if ! curl -s --head --fail http://$DOMAIN > /dev/null; then
+        error_exit "Domain not reachable (check DNS / firewall / nginx)"
+    fi
+
+    log "Starting Certbot HTTPS setup..."
 
     sudo certbot --nginx \
         -d "$DOMAIN" \
         --agree-tos \
         -m "$EMAIL" \
+        --non-interactive \
+        --redirect \
         || error_exit "HTTPS setup failed"
+
+    log "HTTPS successfully enabled"
 }
