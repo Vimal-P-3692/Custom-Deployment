@@ -98,28 +98,10 @@ setup_nginx_reverse_proxy() {
 
     log "Creating Nginx reverse proxy config..."
 
- sudo tee "$CONFIG_FILE" > /dev/null <<EOF
-# HTTP -> HTTPS redirect
+   sudo tee "$CONFIG_FILE" > /dev/null <<EOF
 server {
     listen 80;
     server_name ${DOMAIN};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/html;
-    }
-
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
-}
-
-# HTTPS (used after Certbot installs SSL)
-server {
-    listen 443 ssl;
-    server_name ${DOMAIN};
-
-    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
     location / {
         proxy_pass http://localhost:${PORT};
