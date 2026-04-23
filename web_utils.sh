@@ -84,7 +84,11 @@ install_certbot() {
 setup_nginx_reverse_proxy() {
     SERVICE_NAME=$1
     PORT=$2
+    DOMAIN=$3
 
+    [ -z "$DOMAIN" ] && error_exit "DOMAIN missing"
+    [ -z "$PORT" ] && error_exit "PORT missing"
+    [ -z "$SERVICE_NAME" ] && error_exit "SERVICE_NAME missing"
     CONFIG_FILE="/etc/nginx/conf.d/${SERVICE_NAME}.conf"
 
     if [ -f "$CONFIG_FILE" ]; then
@@ -94,10 +98,28 @@ setup_nginx_reverse_proxy() {
 
     log "Creating Nginx reverse proxy config..."
 
-    sudo bash -c "cat > $CONFIG_FILE" <<EOF
+ sudo tee "$CONFIG_FILE" > /dev/null <<EOF
+# HTTP -> HTTPS redirect
 server {
     listen 80;
-    server_name _;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+# HTTPS (used after Certbot installs SSL)
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
 
     location / {
         proxy_pass http://localhost:${PORT};
@@ -123,9 +145,14 @@ enable_https() {
     [ -z "$DOMAIN" ] && error_exit "Domain required"
     [ -z "$EMAIL" ] && error_exit "Email required"
 
+    log "Waiting for nginx to stabilize..."
+    sleep 10
+
+    log "Checking domain reachability..."
+    curl -I http://$DOMAIN || error_exit "Domain not reachable"
+
     sudo certbot --nginx \
         -d "$DOMAIN" \
-        --non-interactive \
         --agree-tos \
         -m "$EMAIL" \
         || error_exit "HTTPS setup failed"
